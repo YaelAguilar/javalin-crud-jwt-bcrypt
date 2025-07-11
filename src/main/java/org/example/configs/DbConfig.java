@@ -79,6 +79,27 @@ public class DbConfig {
                 "UNIQUE KEY (cart_id, product_id)" + // Un producto solo puede aparecer una vez por carrito
                 ") ENGINE=InnoDB;";
 
+        @Language("MySQL")
+        String createOrdersTableSQL = "CREATE TABLE IF NOT EXISTS orders (" +
+                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "user_id INT NOT NULL, " +
+                "total_amount DECIMAL(10, 2) NOT NULL, " +
+                "status VARCHAR(50) NOT NULL, " + // Estado de la orden (PENDING, COMPLETED, etc.)
+                "order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT" + // No borrar usuario si tiene órdenes
+                ") ENGINE=InnoDB;";
+
+        @Language("MySQL")
+        String createOrderItemsTableSQL = "CREATE TABLE IF NOT EXISTS order_items (" +
+                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "order_id INT NOT NULL, " +
+                "product_id INT, " + // Mantener referencia al producto original (puede ser NULL si se borra el producto)
+                "product_name VARCHAR(255) NOT NULL, " + // Nombre del producto en el momento de la compra
+                "product_price DECIMAL(10, 2) NOT NULL, " + // Precio del producto en el momento de la compra
+                "quantity INT NOT NULL, " +
+                "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE" + // Si se borra la orden, se borran sus items
+                ") ENGINE=InnoDB;";
+
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
             System.out.println("Verificando y/o creando tabla 'users'...");
             stmt.execute(createUsersTableSQL);
@@ -95,6 +116,14 @@ public class DbConfig {
             System.out.println("Verificando y/o creando tabla 'cart_items'...");
             stmt.execute(createCartItemsTableSQL);
             System.out.println("Tabla 'cart_items' lista.");
+
+            System.out.println("Verificando y/o creando tabla 'orders'...");
+            stmt.execute(createOrdersTableSQL);
+            System.out.println("Tabla 'orders' lista.");
+
+            System.out.println("Verificando y/o creando tabla 'order_items'...");
+            stmt.execute(createOrderItemsTableSQL);
+            System.out.println("Tabla 'order_items' lista.");
             
         } catch (SQLException e) {
             System.err.println("Error al inicializar el esquema de la base de datos: " + e.getMessage());
