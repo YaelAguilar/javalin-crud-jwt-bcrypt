@@ -26,4 +26,11 @@ public interface ICartItemDAO {
      * @return Un Optional con el CartItem actualizado.
      */
     Optional<CartItem> update(CartItem item);
+
+    /**
+     * Encuentra todos los items de un carrito específico.
+     * @param cartId El ID del carrito.
+     * @return Una lista de CartItem.
+     */
+    List<CartItem> findAllByCartId(int cartId);
 }

@@ -5,6 +5,8 @@ import org.example.daos.ICartItemDAO;
 import org.example.models.CartItem;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 public class CartItemDAO implements ICartItemDAO {
@@ -63,6 +65,34 @@ public class CartItemDAO implements ICartItemDAO {
             throw new RuntimeException("Error al actualizar item en el carrito", e);
         }
         return Optional.empty();
+    }
+
+    @Override
+    public List<CartItem> findAllByCartId(int cartId) {
+        List<CartItem> items = new ArrayList<>();
+        // Unimos cart_items con products para obtener los detalles del producto en una sola consulta
+        String sql = "SELECT ci.id, ci.cart_id, ci.product_id, ci.quantity, p.name, p.price " +
+                     "FROM cart_items ci " +
+                     "JOIN products p ON ci.product_id = p.id " +
+                     "WHERE ci.cart_id = ?";
+        
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, cartId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    CartItem item = mapRowToCartItem(rs);
+                    // Poblamos los campos adicionales que no están en la tabla cart_items
+                    item.setProductName(rs.getString("name"));
+                    item.setProductPrice(rs.getBigDecimal("price"));
+                    items.add(item);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al buscar todos los items del carrito", e);
+        }
+        return items;
     }
 
     private CartItem mapRowToCartItem(ResultSet rs) throws SQLException {
