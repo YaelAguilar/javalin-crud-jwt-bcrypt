@@ -26,7 +26,10 @@ public class CartService {
         this.productDAO = productDAO;
     }
 
-    // ... (método addItemToCart existente)
+    /**
+     * Añade un producto al carrito de un usuario.
+     * Si el producto ya está en el carrito, actualiza la cantidad.
+     */
     public CartItem addItemToCart(int userId, CartItemAddDTO itemDTO) {
         // 1. Obtener o crear el carrito para el usuario
         Cart cart = cartDAO.findByUserId(userId).orElseGet(() -> cartDAO.createForUser(userId));
@@ -59,6 +62,9 @@ public class CartService {
             });
     }
 
+    /**
+     * Obtiene la vista completa del carrito de un usuario.
+     */
     public CartViewDTO getCartForUser(int userId) {
         Cart cart = cartDAO.findByUserId(userId)
             .orElseThrow(() -> new NoSuchElementException("El usuario no tiene un carrito activo."));

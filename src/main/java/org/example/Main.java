@@ -6,27 +6,31 @@ import io.javalin.Javalin;
 import io.javalin.json.JavalinJackson;
 import org.example.configs.AppConfig;
 import org.example.configs.DbConfig;
+import org.example.configs.ExceptionHandlerConfig;
 import org.example.controllers.AuthController;
 import org.example.controllers.CartController;
-import org.example.controllers.OrderController; // <--- NUEVO
+import org.example.controllers.OrderController;
 import org.example.controllers.ProductController;
 import org.example.controllers.UserController;
 import org.example.daos.*;
-import org.example.daos.impl.*;
-import org.example.middlewares.AuthMiddleware;
+import org.example.daos.impl.CartDAO;
+import org.example.daos.impl.CartItemDAO;
+import org.example.daos.impl.OrderDAO;
+import org.example.daos.impl.OrderItemDAO;
+import org.example.daos.impl.ProductDAO;
+import org.example.daos.impl.UserDAO;
 import org.example.routes.AuthRoutes;
 import org.example.routes.CartRoutes;
-import org.example.routes.OrderRoutes; // <--- NUEVO
+import org.example.routes.OrderRoutes;
 import org.example.routes.ProductRoutes;
 import org.example.routes.UserRoutes;
 import org.example.services.AuthService;
 import org.example.services.CartService;
-import org.example.services.OrderService; // <--- NUEVO
+import org.example.services.OrderService;
 import org.example.services.ProductService;
 import org.example.services.UserService;
 
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 public class Main {
     public static void main(String[] args) {
@@ -38,29 +42,29 @@ public class Main {
         IProductDAO productDAO = new ProductDAO();
         ICartDAO cartDAO = new CartDAO();
         ICartItemDAO cartItemDAO = new CartItemDAO();
-        IOrderDAO orderDAO = new OrderDAO(); // <--- NUEVO
-        IOrderItemDAO orderItemDAO = new OrderItemDAO(); // <--- NUEVO
+        IOrderDAO orderDAO = new OrderDAO();
+        IOrderItemDAO orderItemDAO = new OrderItemDAO();
         
         // Services
         AuthService authService = new AuthService(userDAO);
         UserService userService = new UserService(userDAO);
         ProductService productService = new ProductService(productDAO);
         CartService cartService = new CartService(cartDAO, cartItemDAO, productDAO);
-        OrderService orderService = new OrderService(cartDAO, cartItemDAO, orderDAO, orderItemDAO, productDAO); // <--- NUEVO
+        OrderService orderService = new OrderService(cartDAO, cartItemDAO, orderDAO, orderItemDAO, productDAO);
         
         // Controllers
         AuthController authController = new AuthController(authService);
         UserController userController = new UserController(userService);
         ProductController productController = new ProductController(productService);
         CartController cartController = new CartController(cartService);
-        OrderController orderController = new OrderController(orderService); // <--- NUEVO
+        OrderController orderController = new OrderController(orderService);
 
         // Routes
         AuthRoutes authRoutes = new AuthRoutes(authController);
         UserRoutes userRoutes = new UserRoutes(userController);
         ProductRoutes productRoutes = new ProductRoutes(productController);
         CartRoutes cartRoutes = new CartRoutes(cartController);
-        OrderRoutes orderRoutes = new OrderRoutes(orderController); // <--- NUEVO
+        OrderRoutes orderRoutes = new OrderRoutes(orderController);
 
         ObjectMapper jacksonMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
@@ -76,31 +80,15 @@ public class Main {
         });
 
         // --- Manejadores de Excepciones ---
-        app.exception(AuthMiddleware.AuthException.class, (e, ctx) -> {
-            ctx.status(401).json(Map.of("success", false, "message", e.getMessage()));
-        });
-        app.exception(AuthMiddleware.AdminAccessOnlyException.class, (e, ctx) -> {
-            ctx.status(403).json(Map.of("success", false, "message", e.getMessage()));
-        });
-        app.exception(NoSuchElementException.class, (e, ctx) -> {
-            ctx.status(404).json(Map.of("success", false, "message", e.getMessage()));
-        });
-        app.exception(IllegalArgumentException.class, (e, ctx) -> {
-            ctx.status(400).json(Map.of("success", false, "message", e.getMessage()));
-        });
-        app.exception(RuntimeException.class, (e, ctx) -> { // Catch-all genérico si el service lanza RuntimeException
-            // Esto es un fallback, idealmente, los servicios lanzarían excepciones más específicas.
-            System.err.println("Error inesperado: " + e.getMessage());
-            e.printStackTrace();
-            ctx.status(500).json(Map.of("success", false, "message", "Error interno del servidor: " + e.getMessage()));
-        });
+        // Registrar el manejador de excepciones centralizado
+        ExceptionHandlerConfig.register(app); 
 
         // --- Registrar las rutas ---
         authRoutes.register(app);
         userRoutes.register(app);
         productRoutes.register(app);
         cartRoutes.register(app);
-        orderRoutes.register(app); // <--- NUEVO
+        orderRoutes.register(app);
 
         // Endpoint de prueba
         app.get("/", ctx -> ctx.json(Map.of(

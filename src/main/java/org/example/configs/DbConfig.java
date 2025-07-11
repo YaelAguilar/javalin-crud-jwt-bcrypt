@@ -23,7 +23,6 @@ public class DbConfig {
 
         dataSource = new HikariDataSource(config);
         
-        // Inicializar el esquema de la base de datos (crear tablas si no existen)
         initDatabaseSchema();
     }
 
@@ -34,9 +33,6 @@ public class DbConfig {
         return dataSource.getConnection();
     }
 
-    /**
-     * Este método se encarga de crear las tablas necesarias si no existen.
-     */
     private static void initDatabaseSchema() {
         @Language("MySQL")
         String createUsersTableSQL = "CREATE TABLE IF NOT EXISTS users (" +
@@ -62,10 +58,10 @@ public class DbConfig {
         @Language("MySQL")
         String createCartsTableSQL = "CREATE TABLE IF NOT EXISTS carts (" +
                 "id INT AUTO_INCREMENT PRIMARY KEY, " +
-                "user_id INT NOT NULL UNIQUE, " + // Un usuario solo tiene un carrito
+                "user_id INT NOT NULL UNIQUE, " +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
-                "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" + // Si se borra el usuario, se borra su carrito
+                "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" +
                 ") ENGINE=InnoDB;";
 
         @Language("MySQL")
@@ -74,9 +70,9 @@ public class DbConfig {
                 "cart_id INT NOT NULL, " +
                 "product_id INT NOT NULL, " +
                 "quantity INT NOT NULL CHECK (quantity > 0), " +
-                "FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE, " + // Si se borra el carrito, se borran sus items
-                "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE, " + // Si se borra el producto, se quita de los carritos
-                "UNIQUE KEY (cart_id, product_id)" + // Un producto solo puede aparecer una vez por carrito
+                "FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE, " +
+                "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE, " +
+                "UNIQUE KEY (cart_id, product_id)" +
                 ") ENGINE=InnoDB;";
 
         @Language("MySQL")
@@ -84,20 +80,20 @@ public class DbConfig {
                 "id INT AUTO_INCREMENT PRIMARY KEY, " +
                 "user_id INT NOT NULL, " +
                 "total_amount DECIMAL(10, 2) NOT NULL, " +
-                "status VARCHAR(50) NOT NULL, " + // Estado de la orden (PENDING, COMPLETED, etc.)
+                "status VARCHAR(50) NOT NULL, " +
                 "order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
-                "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT" + // No borrar usuario si tiene órdenes
+                "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT" +
                 ") ENGINE=InnoDB;";
 
         @Language("MySQL")
         String createOrderItemsTableSQL = "CREATE TABLE IF NOT EXISTS order_items (" +
                 "id INT AUTO_INCREMENT PRIMARY KEY, " +
                 "order_id INT NOT NULL, " +
-                "product_id INT, " + // Mantener referencia al producto original (puede ser NULL si se borra el producto)
-                "product_name VARCHAR(255) NOT NULL, " + // Nombre del producto en el momento de la compra
-                "product_price DECIMAL(10, 2) NOT NULL, " + // Precio del producto en el momento de la compra
+                "product_id INT, " +
+                "product_name VARCHAR(255) NOT NULL, " +
+                "product_price DECIMAL(10, 2) NOT NULL, " +
                 "quantity INT NOT NULL, " +
-                "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE" + // Si se borra la orden, se borran sus items
+                "FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE" +
                 ") ENGINE=InnoDB;";
 
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {

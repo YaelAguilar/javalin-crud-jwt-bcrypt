@@ -14,31 +14,30 @@ public class AuthService {
     
     private final IUserDAO userDAO;
 
-    // Inyectamos el DAO a través del constructor.
     public AuthService(IUserDAO userDAO) {
         this.userDAO = userDAO;
     }
 
-    /**
-     * Lógica para registrar un nuevo usuario (cliente).
-     * @param registerDTO Datos del formulario de registro.
-     * @return El DTO del usuario recién creado.
-     */
     public UserDTO register(RegisterDTO registerDTO) {
+        System.out.println("\n--- AuthService.register() Debug ---");
+        System.out.println("Intentando registro para email: " + registerDTO.email());
         // 1. Validación de datos de entrada
         if (registerDTO.name() == null || registerDTO.name().isBlank() ||
             registerDTO.email() == null || registerDTO.email().isBlank() ||
             registerDTO.password() == null || registerDTO.password().isBlank()) {
+            System.out.println("Resultado: Nombre, email o contraseña vacíos/nulos.");
             throw new IllegalArgumentException("Nombre, email y contraseña son obligatorios.");
         }
 
         // 2. Verificar si el email ya está en uso
         if (userDAO.findByEmail(registerDTO.email()).isPresent()) {
+            System.out.println("Resultado: El email ya está registrado.");
             throw new IllegalArgumentException("El email '" + registerDTO.email() + "' ya está registrado.");
         }
 
         // 3. Hashear la contraseña
         String hashedPassword = BCrypt.withDefaults().hashToString(12, registerDTO.password().toCharArray());
+        System.out.println("Hash generado para el registro: " + hashedPassword); // <-- Log útil aquí
 
         // 4. Crear la entidad User para guardarla en la BD
         User newUser = new User();
@@ -51,6 +50,7 @@ public class AuthService {
         User savedUser = userDAO.save(newUser);
         
         // 6. Convertir la entidad guardada a un DTO para la respuesta (sin la contraseña)
+        System.out.println("Resultado: Usuario registrado con éxito. ID: " + savedUser.getId());
         return new UserDTO(
             savedUser.getId(),
             savedUser.getName(),
@@ -60,32 +60,35 @@ public class AuthService {
         );
     }
     
-    /**
-     * Lógica para el inicio de sesión de un usuario.
-     * @param loginDTO Credenciales de inicio de sesión.
-     * @return Un Optional que contiene el User si las credenciales son válidas.
-     */
     public Optional<User> login(LoginDTO loginDTO) {
-        // 1. Validación
-        if (loginDTO.email() == null || loginDTO.password() == null) {
-            return Optional.empty();
+        System.out.println("\n--- AuthService.login() Debug ---");
+        System.out.println("Intentando login para email: " + loginDTO.email());
+        System.out.println("Contraseña recibida (sin hashear): " + loginDTO.password());
+
+        if (loginDTO.email() == null || loginDTO.email().isBlank() ||
+            loginDTO.password() == null || loginDTO.password().isBlank()) {
+            System.out.println("Resultado: Email o contraseña vacíos/nulos.");
+            return Optional.empty(); // Credenciales inválidas
         }
 
-        // 2. Buscar usuario por email
         Optional<User> userOptional = userDAO.findByEmail(loginDTO.email());
         if (userOptional.isEmpty()) {
-            return Optional.empty(); // Email no encontrado
+            System.out.println("Resultado: Usuario NO encontrado para email: " + loginDTO.email());
+            return Optional.empty(); // Usuario no encontrado
         }
 
         User user = userOptional.get();
+        System.out.println("Usuario encontrado en BD: " + user.getEmail() + ", Rol: " + user.getRole());
+        System.out.println("Contraseña hasheada de la BD: " + user.getPassword());
 
-        // 3. Verificar la contraseña hasheada
         BCrypt.Result result = BCrypt.verifyer().verify(loginDTO.password().toCharArray(), user.getPassword());
         
         if (result.verified) {
-            return Optional.of(user); // Contraseña correcta
+            System.out.println("Resultado: Contraseña verificada con éxito. Login OK.");
+            return Optional.of(user);
+        } else {
+            System.out.println("Resultado: Verificación de contraseña FALLIDA.");
+            return Optional.empty(); // Contraseña incorrecta
         }
-        
-        return Optional.empty(); // Contraseña incorrecta
     }
 }

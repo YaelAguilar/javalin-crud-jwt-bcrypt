@@ -14,7 +14,6 @@ public class CartController {
         this.cartService = cartService;
     }
 
-    // ... (métodos addItem y getCart existentes)
     public void addItem(Context ctx) {
         try {
             int userId = ctx.attribute("userId");
@@ -65,7 +64,7 @@ public class CartController {
             ctx.status(404).json(Map.of("success", false, "message", e.getMessage()));
         }
     }
-    
+        
     public void clearCart(Context ctx) {
         try {
             int userId = ctx.attribute("userId");
@@ -74,6 +73,9 @@ public class CartController {
         } catch (NoSuchElementException e) {
             // Si no hay carrito, la operación es igualmente exitosa (ya está vacío).
             ctx.status(204);
+        } catch (Exception e) { //Capturamos el nuevo error
+             System.err.println("Error al vaciar el carrito en CartController" + e.getMessage());
+            ctx.status(500).json(Map.of("success", false, "message", "Error al procesar la compra: " + e.getMessage()));
         }
     }
 }

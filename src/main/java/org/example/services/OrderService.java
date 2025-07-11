@@ -27,7 +27,7 @@ public class OrderService {
     private final ICartItemDAO cartItemDAO;
     private final IOrderDAO orderDAO;
     private final IOrderItemDAO orderItemDAO;
-    private final IProductDAO productDAO; // Necesario para actualizar stock
+    private final IProductDAO productDAO;
 
     public OrderService(ICartDAO cartDAO, ICartItemDAO cartItemDAO, IOrderDAO orderDAO, IOrderItemDAO orderItemDAO, IProductDAO productDAO) {
         this.cartDAO = cartDAO;
@@ -44,7 +44,9 @@ public class OrderService {
      * @return Los detalles de la orden creada.
      */
     public OrderDetailDTO checkout(int userId) {
-        try (Connection conn = DbConfig.getConnection()) {
+        Connection conn = null; // Declarar la conexión fuera del try para que el catch externo la vea
+        try {
+            conn = DbConfig.getConnection(); // Obtener la conexión
             conn.setAutoCommit(false); // Iniciar la transacción
             
             Cart cart = cartDAO.findByUserId(userId)
@@ -94,7 +96,7 @@ public class OrderService {
                 Product productToUpdate = productDAO.findById(orderItem.getProductId())
                     .orElseThrow(() -> new RuntimeException("Producto no encontrado para actualizar stock.")); // No debería pasar
                 productToUpdate.setStock(productToUpdate.getStock() - orderItem.getQuantity());
-                productDAO.update(productToUpdate) // Usamos la conexión del pool, se mantiene la transacción si la operación está aislada.
+                productDAO.update(productToUpdate) 
                           .orElseThrow(() -> new RuntimeException("No se pudo actualizar el stock del producto " + productToUpdate.getName()));
             }
 
@@ -105,9 +107,37 @@ public class OrderService {
             return mapOrderToDetailDTO(order, orderItems);
 
         } catch (SQLException e) {
+            if (conn != null) { // Solo intentar rollback si la conexión se obtuvo
+                try {
+                    conn.rollback(); // Deshacer la transacción en caso de error SQL
+                    System.err.println("Transacción de checkout deshecha debido a un error SQL: " + e.getMessage());
+                } catch (SQLException rollbackEx) {
+                    System.err.println("Error al hacer rollback: " + rollbackEx.getMessage());
+                }
+            }
             throw new RuntimeException("Error de base de datos durante el checkout: " + e.getMessage(), e);
         } catch (RuntimeException e) {
+            // Este catch es para otras RuntimeExceptions lanzadas por el código de servicio (ej. stock, NoSuchElementException)
+            if (conn != null) { // Solo intentar rollback si la conexión se obtuvo
+                try {
+                    conn.rollback();
+                    System.err.println("Transacción de checkout deshecha debido a error de logica: " + e.getMessage());
+                } catch (SQLException rollbackEx) {
+                    System.err.println("Error al hacer rollback en lógica: " + rollbackEx.getMessage());
+                }
+            }
+            System.err.println("Error de lógica de negocio durante el checkout: " + e.getMessage());
             throw e; // Relanzar para que el manejador de errores de Javalin lo capture
+        } finally {
+            // Asegurarse de que la conexión se cierre o regrese al pool
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true); // Restaurar autocommit
+                    conn.close(); // Cerrar la conexión (la devuelve al pool)
+                } catch (SQLException e) {
+                    System.err.println("Error al cerrar la conexión en el finally del OrderService: " + e.getMessage());
+                }
+            }
         }
     }
 
