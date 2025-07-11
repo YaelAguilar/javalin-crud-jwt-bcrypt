@@ -22,5 +22,11 @@ public interface IUserDAO {
      * @return El objeto User guardado, ahora con su id asignado.
      */
     User save(User user);
-    
+
+    /**
+     * Busca un usuario por su ID único.
+     * @param id El ID del usuario a buscar.
+     * @return un Optional que contiene el User si se encuentra, o un Optional vacío si no.
+     */
+    Optional<User> findById(int id);
 }

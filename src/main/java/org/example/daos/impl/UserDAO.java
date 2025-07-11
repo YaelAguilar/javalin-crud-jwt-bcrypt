@@ -23,7 +23,6 @@ public class UserDAO implements IUserDAO {
             
             try (ResultSet rs = pstmt.executeQuery()) {
                 if (rs.next()) {
-                    // Si encontramos un resultado, lo mapeamos a un objeto User
                     return Optional.of(mapRowToUser(rs));
                 }
             }
@@ -39,7 +38,6 @@ public class UserDAO implements IUserDAO {
         String sql = "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)";
         
         try (Connection conn = DbConfig.getConnection();
-             // Pedimos que nos devuelva las claves generadas (el ID)
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
             pstmt.setString(1, user.getName());
@@ -53,10 +51,9 @@ public class UserDAO implements IUserDAO {
                 throw new SQLException("No se pudo crear el usuario, ninguna fila afectada.");
             }
 
-            // Obtenemos el ID generado por la BD
             try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
-                    user.setId(generatedKeys.getInt(1)); // Asignamos el nuevo ID al objeto
+                    user.setId(generatedKeys.getInt(1));
                 } else {
                     throw new SQLException("Fallo al crear usuario, no se obtuvo el ID.");
                 }
@@ -64,18 +61,32 @@ public class UserDAO implements IUserDAO {
             return user;
         } catch (SQLException e) {
             System.err.println("Error al guardar usuario: " + e.getMessage());
-            // En una aplicación real, no lanzaríamos RuntimeException directamente,
-            // sino una excepción más específica.
             throw new RuntimeException("Error de base de datos al guardar el usuario.", e);
         }
     }
 
-    /**
-     * Método de utilidad para convertir una fila de un ResultSet en un objeto User.
-     * @param rs El ResultSet posicionado en la fila a mapear.
-     * @return Un objeto User con los datos de la fila.
-     * @throws SQLException Si ocurre un error al acceder a las columnas.
-     */
+    @Override
+    public Optional<User> findById(int id) {
+        @Language("MySQL")
+        String sql = "SELECT * FROM users WHERE id = ?";
+        
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             
+            pstmt.setInt(1, id);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapRowToUser(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al buscar usuario por id: " + e.getMessage());
+        }
+        return Optional.empty();
+    }
+
+
     private User mapRowToUser(ResultSet rs) throws SQLException {
         User user = new User();
         user.setId(rs.getInt("id"));
