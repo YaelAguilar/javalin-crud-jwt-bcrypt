@@ -3,7 +3,6 @@ package org.example.daos.impl;
 import org.example.configs.DbConfig;
 import org.example.daos.ICartItemDAO;
 import org.example.models.CartItem;
-
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +10,8 @@ import java.util.Optional;
 
 public class CartItemDAO implements ICartItemDAO {
 
+    // ... (métodos findByCartIdAndProductId, save, update, findAllByCartId existentes)
+    
     @Override
     public Optional<CartItem> findByCartIdAndProductId(int cartId, int productId) {
         String sql = "SELECT * FROM cart_items WHERE cart_id = ? AND product_id = ?";
@@ -70,7 +71,6 @@ public class CartItemDAO implements ICartItemDAO {
     @Override
     public List<CartItem> findAllByCartId(int cartId) {
         List<CartItem> items = new ArrayList<>();
-        // Unimos cart_items con products para obtener los detalles del producto en una sola consulta
         String sql = "SELECT ci.id, ci.cart_id, ci.product_id, ci.quantity, p.name, p.price " +
                      "FROM cart_items ci " +
                      "JOIN products p ON ci.product_id = p.id " +
@@ -83,7 +83,6 @@ public class CartItemDAO implements ICartItemDAO {
             try (ResultSet rs = pstmt.executeQuery()) {
                 while (rs.next()) {
                     CartItem item = mapRowToCartItem(rs);
-                    // Poblamos los campos adicionales que no están en la tabla cart_items
                     item.setProductName(rs.getString("name"));
                     item.setProductPrice(rs.getBigDecimal("price"));
                     items.add(item);
@@ -93,6 +92,32 @@ public class CartItemDAO implements ICartItemDAO {
             throw new RuntimeException("Error al buscar todos los items del carrito", e);
         }
         return items;
+    }
+
+    @Override
+    public boolean deleteByCartIdAndProductId(int cartId, int productId) {
+        String sql = "DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, cartId);
+            pstmt.setInt(2, productId);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al eliminar item del carrito", e);
+        }
+    }
+
+    @Override
+    public void deleteAllByCartId(int cartId) {
+        String sql = "DELETE FROM cart_items WHERE cart_id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, cartId);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al vaciar el carrito", e);
+        }
     }
 
     private CartItem mapRowToCartItem(ResultSet rs) throws SQLException {

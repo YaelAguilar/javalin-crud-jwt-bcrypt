@@ -7,6 +7,7 @@ import org.example.models.Cart;
 import org.example.models.CartItem;
 import org.example.models.Product;
 import org.example.models.dtos.cart.CartItemAddDTO;
+import org.example.models.dtos.cart.CartItemUpdateDTO;
 import org.example.models.dtos.cart.CartViewDTO;
 
 import java.math.BigDecimal;
@@ -25,10 +26,7 @@ public class CartService {
         this.productDAO = productDAO;
     }
 
-    /**
-     * Añade un producto al carrito de un usuario.
-     * Si el producto ya está en el carrito, actualiza la cantidad.
-     */
+    // ... (método addItemToCart existente)
     public CartItem addItemToCart(int userId, CartItemAddDTO itemDTO) {
         // 1. Obtener o crear el carrito para el usuario
         Cart cart = cartDAO.findByUserId(userId).orElseGet(() -> cartDAO.createForUser(userId));
@@ -61,9 +59,6 @@ public class CartService {
             });
     }
 
-    /**
-     * Obtiene la vista completa del carrito de un usuario.
-     */
     public CartViewDTO getCartForUser(int userId) {
         Cart cart = cartDAO.findByUserId(userId)
             .orElseThrow(() -> new NoSuchElementException("El usuario no tiene un carrito activo."));
@@ -75,5 +70,37 @@ public class CartService {
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return new CartViewDTO(cart.getId(), userId, items, totalPrice);
+    }
+    
+    public CartItem updateItemQuantity(int userId, int productId, CartItemUpdateDTO updateDTO) {
+        if (updateDTO.quantity() <= 0) {
+            throw new IllegalArgumentException("La cantidad debe ser mayor que cero.");
+        }
+        
+        Cart cart = cartDAO.findByUserId(userId).orElseThrow(() -> new NoSuchElementException("Carrito no encontrado."));
+        Product product = productDAO.findById(productId).orElseThrow(() -> new NoSuchElementException("Producto no encontrado."));
+        
+        if (product.getStock() < updateDTO.quantity()) {
+            throw new IllegalArgumentException("Stock insuficiente.");
+        }
+
+        CartItem item = cartItemDAO.findByCartIdAndProductId(cart.getId(), productId)
+            .orElseThrow(() -> new NoSuchElementException("El producto no está en el carrito."));
+            
+        item.setQuantity(updateDTO.quantity());
+        return cartItemDAO.update(item).orElseThrow(() -> new RuntimeException("No se pudo actualizar la cantidad."));
+    }
+
+    public void removeItemFromCart(int userId, int productId) {
+        Cart cart = cartDAO.findByUserId(userId).orElseThrow(() -> new NoSuchElementException("Carrito no encontrado."));
+        
+        if (!cartItemDAO.deleteByCartIdAndProductId(cart.getId(), productId)) {
+            throw new NoSuchElementException("El producto no se encontró en el carrito.");
+        }
+    }
+    
+    public void clearCart(int userId) {
+        Cart cart = cartDAO.findByUserId(userId).orElseThrow(() -> new NoSuchElementException("Carrito no encontrado."));
+        cartItemDAO.deleteAllByCartId(cart.getId());
     }
 }

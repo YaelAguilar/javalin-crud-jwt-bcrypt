@@ -2,6 +2,7 @@ package org.example.controllers;
 
 import io.javalin.http.Context;
 import org.example.models.dtos.cart.CartItemAddDTO;
+import org.example.models.dtos.cart.CartItemUpdateDTO;
 import org.example.services.CartService;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -13,6 +14,7 @@ public class CartController {
         this.cartService = cartService;
     }
 
+    // ... (métodos addItem y getCart existentes)
     public void addItem(Context ctx) {
         try {
             int userId = ctx.attribute("userId");
@@ -33,8 +35,45 @@ public class CartController {
             var cartView = cartService.getCartForUser(userId);
             ctx.status(200).json(Map.of("success", true, "data", cartView));
         } catch (NoSuchElementException e) {
-            // Si un usuario nunca ha añadido nada, no tiene carrito. Esto es esperado.
             ctx.status(200).json(Map.of("success", true, "message", "El carrito está vacío.", "data", null));
+        }
+    }
+
+    public void updateItem(Context ctx) {
+        try {
+            int userId = ctx.attribute("userId");
+            int productId = Integer.parseInt(ctx.pathParam("productId"));
+            CartItemUpdateDTO updateDTO = ctx.bodyAsClass(CartItemUpdateDTO.class);
+
+            var updatedItem = cartService.updateItemQuantity(userId, productId, updateDTO);
+            ctx.status(200).json(Map.of("success", true, "message", "Cantidad actualizada.", "data", updatedItem));
+        } catch (NoSuchElementException e) {
+            ctx.status(404).json(Map.of("success", false, "message", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            ctx.status(400).json(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    public void removeItem(Context ctx) {
+        try {
+            int userId = ctx.attribute("userId");
+            int productId = Integer.parseInt(ctx.pathParam("productId"));
+            
+            cartService.removeItemFromCart(userId, productId);
+            ctx.status(204); // No Content
+        } catch (NoSuchElementException e) {
+            ctx.status(404).json(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+    
+    public void clearCart(Context ctx) {
+        try {
+            int userId = ctx.attribute("userId");
+            cartService.clearCart(userId);
+            ctx.status(204); // No Content
+        } catch (NoSuchElementException e) {
+            // Si no hay carrito, la operación es igualmente exitosa (ya está vacío).
+            ctx.status(204);
         }
     }
 }
