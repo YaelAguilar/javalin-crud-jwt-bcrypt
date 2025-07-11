@@ -7,40 +7,56 @@ import io.javalin.json.JavalinJackson;
 import org.example.configs.AppConfig;
 import org.example.configs.DbConfig;
 import org.example.controllers.AuthController;
+import org.example.controllers.UserController;
 import org.example.daos.IUserDAO;
 import org.example.daos.impl.UserDAO;
+import org.example.middlewares.AuthMiddleware;
 import org.example.routes.AuthRoutes;
+import org.example.routes.UserRoutes;
 import org.example.services.AuthService;
+import org.example.services.UserService;
 
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 public class Main {
     public static void main(String[] args) {
         DbConfig.init();
 
         // --- Inyección de Dependencias Manual ---
-        // 1. Capa de Datos
         IUserDAO userDAO = new UserDAO();
-        // 2. Capa de Servicios
         AuthService authService = new AuthService(userDAO);
-        // 3. Capa de Controladores
+        UserService userService = new UserService(userDAO); // <-- Instanciar UserService
         AuthController authController = new AuthController(authService);
-        // 4. Capa de Rutas
+        UserController userController = new UserController(userService); // <-- Instanciar UserController
         AuthRoutes authRoutes = new AuthRoutes(authController);
+        UserRoutes userRoutes = new UserRoutes(userController); // <-- Instanciar UserRoutes
 
         ObjectMapper jacksonMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
         Javalin app = Javalin.create(config -> {
             config.jsonMapper(new JavalinJackson(jacksonMapper));
-            config.plugins.enableCors(cors -> cors.add(it -> it.anyHost()));
+            config.plugins.enableCors(cors -> cors.add(it -> {
+                it.anyHost();
+                it.exposeHeader("Authorization"); // Exponer el header para que el cliente lo pueda leer
+            }));
             if (AppConfig.isDevelopment()) {
                 config.plugins.enableDevLogging();
             }
         });
 
-        // --- Registrar las rutas en la aplicación ---
+        // --- Manejadores de Excepciones ---
+        app.exception(AuthMiddleware.AuthException.class, (e, ctx) -> {
+            ctx.status(401).json(Map.of("success", false, "message", e.getMessage()));
+        });
+        app.exception(NoSuchElementException.class, (e, ctx) -> {
+            ctx.status(404).json(Map.of("success", false, "message", e.getMessage()));
+        });
+
+        // --- Registrar las rutas ---
         authRoutes.register(app);
-        
+        userRoutes.register(app);
+
         // Endpoint de prueba
         app.get("/", ctx -> ctx.json(Map.of(
             "status", "Ok",
