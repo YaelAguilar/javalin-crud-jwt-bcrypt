@@ -16,7 +16,7 @@ dependencies {
 
     // --- Base de Datos ---
     // Driver JDBC para la conexión con MySQL.
-    implementation("mysql:mysql-connector-java:8.4.0")
+    implementation("com.mysql:mysql-connector-j:8.4.0")
     // Pool de conexiones de alto rendimiento (HikariCP).
     implementation("com.zaxxer:HikariCP:5.1.0")
 
