@@ -2,9 +2,11 @@ package org.example.configs;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.intellij.lang.annotations.Language;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 public class DbConfig {
     private static HikariDataSource dataSource;
@@ -15,14 +17,14 @@ public class DbConfig {
         config.setUsername(AppConfig.getDbUsername());
         config.setPassword(AppConfig.getDbPassword());
         config.setMaximumPoolSize(AppConfig.getDbMaxPoolSize());
-        
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
 
         dataSource = new HikariDataSource(config);
         
-        System.out.println("Pool de conexiones inicializado correctamente con un tamaño máximo de " + AppConfig.getDbMaxPoolSize() + " conexiones.");
+        // Inicializar el esquema de la base de datos (crear tablas si no existen)
+        initDatabaseSchema();
     }
 
     public static Connection getConnection() throws SQLException {
@@ -30,6 +32,31 @@ public class DbConfig {
             throw new SQLException("El pool de conexiones (DataSource) no ha sido inicializado.");
         }
         return dataSource.getConnection();
+    }
+
+    /**
+     * Este método se encarga de crear las tablas necesarias si no existen.
+     */
+    private static void initDatabaseSchema() {
+        @Language("MySQL")
+        String createUsersTableSQL = "CREATE TABLE IF NOT EXISTS users (" +
+                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "name VARCHAR(100) NOT NULL, " +
+                "email VARCHAR(255) UNIQUE NOT NULL, " +
+                "password VARCHAR(255) NOT NULL, " +
+                "role VARCHAR(20) NOT NULL, " +
+                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "INDEX idx_email (email)) ENGINE=InnoDB;";
+
+        try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
+            System.out.println("Verificando y/o creando tabla 'users'...");
+            stmt.execute(createUsersTableSQL);
+            System.out.println("Tabla 'users' lista.");
+            
+        } catch (SQLException e) {
+            System.err.println("Error al inicializar el esquema de la base de datos: " + e.getMessage());
+            throw new RuntimeException("Error fatal durante la inicialización de la BD.", e);
+        }
     }
 
     public static void close() {
