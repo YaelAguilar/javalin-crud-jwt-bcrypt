@@ -59,6 +59,26 @@ public class DbConfig {
                 "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
                 ") ENGINE=InnoDB;";
 
+        @Language("MySQL")
+        String createCartsTableSQL = "CREATE TABLE IF NOT EXISTS carts (" +
+                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "user_id INT NOT NULL UNIQUE, " + // Un usuario solo tiene un carrito
+                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, " +
+                "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" + // Si se borra el usuario, se borra su carrito
+                ") ENGINE=InnoDB;";
+
+        @Language("MySQL")
+        String createCartItemsTableSQL = "CREATE TABLE IF NOT EXISTS cart_items (" +
+                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "cart_id INT NOT NULL, " +
+                "product_id INT NOT NULL, " +
+                "quantity INT NOT NULL CHECK (quantity > 0), " +
+                "FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE, " + // Si se borra el carrito, se borran sus items
+                "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE, " + // Si se borra el producto, se quita de los carritos
+                "UNIQUE KEY (cart_id, product_id)" + // Un producto solo puede aparecer una vez por carrito
+                ") ENGINE=InnoDB;";
+
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
             System.out.println("Verificando y/o creando tabla 'users'...");
             stmt.execute(createUsersTableSQL);
@@ -67,6 +87,14 @@ public class DbConfig {
             System.out.println("Verificando y/o creando tabla 'products'...");
             stmt.execute(createProductsTableSQL);
             System.out.println("Tabla 'products' lista.");
+            
+            System.out.println("Verificando y/o creando tabla 'carts'...");
+            stmt.execute(createCartsTableSQL);
+            System.out.println("Tabla 'carts' lista.");
+
+            System.out.println("Verificando y/o creando tabla 'cart_items'...");
+            stmt.execute(createCartItemsTableSQL);
+            System.out.println("Tabla 'cart_items' lista.");
             
         } catch (SQLException e) {
             System.err.println("Error al inicializar el esquema de la base de datos: " + e.getMessage());
