@@ -47,11 +47,26 @@ public class DbConfig {
                 "role VARCHAR(20) NOT NULL, " +
                 "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
                 "INDEX idx_email (email)) ENGINE=InnoDB;";
+        
+        @Language("MySQL")
+        String createProductsTableSQL = "CREATE TABLE IF NOT EXISTS products (" +
+                "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                "name VARCHAR(255) NOT NULL, " +
+                "description TEXT, " +
+                "price DECIMAL(10, 2) NOT NULL, " +
+                "stock INT NOT NULL DEFAULT 0, " +
+                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, " +
+                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+                ") ENGINE=InnoDB;";
 
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
             System.out.println("Verificando y/o creando tabla 'users'...");
             stmt.execute(createUsersTableSQL);
             System.out.println("Tabla 'users' lista.");
+            
+            System.out.println("Verificando y/o creando tabla 'products'...");
+            stmt.execute(createProductsTableSQL);
+            System.out.println("Tabla 'products' lista.");
             
         } catch (SQLException e) {
             System.err.println("Error al inicializar el esquema de la base de datos: " + e.getMessage());
