@@ -8,4 +8,6 @@ public interface IProductDAO {
     Product save(Product product);
     Optional<Product> findById(int id);
     List<Product> findAll();
+    Optional<Product> update(Product product);
+    boolean deleteById(int id);
 }

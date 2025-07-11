@@ -15,15 +15,28 @@ public class ProductRoutes {
     public void register(Javalin app) {
         app.routes(() -> {
             ApiBuilder.path("/api/products", () -> {
-                // Ruta pública para listar productos
+                
+                // --- Rutas Públicas ---
+                // GET /api/products -> Listar todos
                 ApiBuilder.get(productController::getAll);
+                // GET /api/products/{id} -> Obtener uno
+                ApiBuilder.get("/{id}", productController::getOne);
 
-                // Ruta protegida para crear productos (solo ADMINS)
-                ApiBuilder.post(ctx -> {
-                    // Aplicamos los middlewares en la misma línea
-                    AuthMiddleware.requireAuth().handle(ctx);
-                    AuthMiddleware.requireAdmin().handle(ctx);
-                    productController.create(ctx);
+                // --- Rutas de Administrador ---
+                // Agrupamos las rutas que requieren permisos de administrador.
+                // Esta es una forma más limpia de aplicar middlewares a un grupo.
+                ApiBuilder.path("", () -> {
+                    // Aplicamos middlewares a este sub-grupo.
+                    // Cualquier petición a POST, PUT, DELETE en /api/products requerirá autenticación de admin.
+                    ApiBuilder.before(AuthMiddleware.requireAuth());
+                    ApiBuilder.before(AuthMiddleware.requireAdmin());
+                    
+                    // POST /api/products -> Crear
+                    ApiBuilder.post(productController::create);
+                    // PUT /api/products/{id} -> Actualizar
+                    ApiBuilder.put("/{id}", productController::update);
+                    // DELETE /api/products/{id} -> Eliminar
+                    ApiBuilder.delete("/{id}", productController::delete);
                 });
             });
         });

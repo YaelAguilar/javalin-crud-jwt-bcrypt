@@ -3,6 +3,7 @@ package org.example.daos.impl;
 import org.example.configs.DbConfig;
 import org.example.daos.IProductDAO;
 import org.example.models.Product;
+import org.intellij.lang.annotations.Language;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -13,6 +14,7 @@ public class ProductDAO implements IProductDAO {
 
     @Override
     public Product save(Product product) {
+        @Language("MySQL")
         String sql = "INSERT INTO products (name, description, price, stock) VALUES (?, ?, ?, ?)";
         try (Connection conn = DbConfig.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -26,6 +28,8 @@ public class ProductDAO implements IProductDAO {
             try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
                     product.setId(generatedKeys.getInt(1));
+                } else {
+                    throw new SQLException("La creación del producto falló, no se obtuvo ID.");
                 }
             }
             return product;
@@ -36,12 +40,26 @@ public class ProductDAO implements IProductDAO {
 
     @Override
     public Optional<Product> findById(int id) {
+        @Language("MySQL")
+        String sql = "SELECT * FROM products WHERE id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapRowToProduct(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al buscar producto por ID", e);
+        }
         return Optional.empty();
     }
 
     @Override
     public List<Product> findAll() {
         List<Product> products = new ArrayList<>();
+        @Language("MySQL")
         String sql = "SELECT * FROM products ORDER BY created_at DESC";
         try (Connection conn = DbConfig.getConnection();
              Statement stmt = conn.createStatement();
@@ -55,6 +73,47 @@ public class ProductDAO implements IProductDAO {
         return products;
     }
 
+    @Override
+    public Optional<Product> update(Product product) {
+        @Language("MySQL")
+        String sql = "UPDATE products SET name = ?, description = ?, price = ?, stock = ? WHERE id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, product.getName());
+            pstmt.setString(2, product.getDescription());
+            pstmt.setBigDecimal(3, product.getPrice());
+            pstmt.setInt(4, product.getStock());
+            pstmt.setInt(5, product.getId());
+
+            int affectedRows = pstmt.executeUpdate();
+            if (affectedRows > 0) {
+                return Optional.of(product);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al actualizar el producto", e);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public boolean deleteById(int id) {
+        @Language("MySQL")
+        String sql = "DELETE FROM products WHERE id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, id);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al eliminar el producto", e);
+        }
+    }
+        
+    /**
+     * Método de utilidad para convertir una fila de un ResultSet en un objeto Product.
+     */
     private Product mapRowToProduct(ResultSet rs) throws SQLException {
         Product p = new Product();
         p.setId(rs.getInt("id"));
