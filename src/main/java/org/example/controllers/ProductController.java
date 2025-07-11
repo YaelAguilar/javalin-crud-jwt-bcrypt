@@ -24,8 +24,12 @@ public class ProductController {
     }
 
     public void getAll(Context ctx) {
-        var products = productService.getAllProducts();
-        ctx.status(200).json(Map.of("success", true, "data", products));
+        // Obtener parámetros de la URL, con valores por defecto
+        int page = ctx.queryParamAsClass("page", Integer.class).getOrDefault(1);
+        int pageSize = ctx.queryParamAsClass("pageSize", Integer.class).getOrDefault(10);
+        
+        var paginatedResponse = productService.getAllProductsPaginated(page, pageSize);
+        ctx.status(200).json(Map.of("success", true, "data", paginatedResponse));
     }
 
     public void getOne(Context ctx) {

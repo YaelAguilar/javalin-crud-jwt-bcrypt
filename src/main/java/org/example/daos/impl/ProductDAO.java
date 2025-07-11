@@ -57,23 +57,6 @@ public class ProductDAO implements IProductDAO {
     }
 
     @Override
-    public List<Product> findAll() {
-        List<Product> products = new ArrayList<>();
-        @Language("MySQL")
-        String sql = "SELECT * FROM products ORDER BY created_at DESC";
-        try (Connection conn = DbConfig.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                products.add(mapRowToProduct(rs));
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Error al buscar todos los productos", e);
-        }
-        return products;
-    }
-
-    @Override
     public Optional<Product> update(Product product) {
         @Language("MySQL")
         String sql = "UPDATE products SET name = ?, description = ?, price = ?, stock = ? WHERE id = ?";
@@ -111,9 +94,44 @@ public class ProductDAO implements IProductDAO {
         }
     }
         
-    /**
-     * Método de utilidad para convertir una fila de un ResultSet en un objeto Product.
-     */
+    @Override
+    public List<Product> findPaginated(int offset, int limit) {
+        List<Product> products = new ArrayList<>();
+        @Language("MySQL")
+        String sql = "SELECT * FROM products ORDER BY id ASC LIMIT ? OFFSET ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, limit);
+            pstmt.setInt(2, offset);
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    products.add(mapRowToProduct(rs));
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al buscar productos paginados", e);
+        }
+        return products;
+    }
+
+    @Override
+    public long count() {
+        @Language("MySQL")
+        String sql = "SELECT COUNT(*) FROM products";
+        try (Connection conn = DbConfig.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al contar los productos", e);
+        }
+        return 0;
+    }
+
     private Product mapRowToProduct(ResultSet rs) throws SQLException {
         Product p = new Product();
         p.setId(rs.getInt("id"));

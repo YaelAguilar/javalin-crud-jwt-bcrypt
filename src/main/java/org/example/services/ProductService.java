@@ -2,6 +2,7 @@ package org.example.services;
 
 import org.example.daos.IProductDAO;
 import org.example.models.Product;
+import org.example.models.dtos.common.PaginatedResponseDTO;
 import org.example.models.dtos.product.ProductCreateDTO;
 import org.example.models.dtos.product.ProductUpdateDTO;
 
@@ -28,8 +29,22 @@ public class ProductService {
         return productDAO.save(newProduct);
     }
 
-    public List<Product> getAllProducts() {
-        return productDAO.findAll();
+    public PaginatedResponseDTO<Product> getAllProductsPaginated(int page, int pageSize) {
+        // Validar para evitar valores negativos que rompan el cálculo del offset
+        if (page <= 0) page = 1;
+        if (pageSize <= 0) pageSize = 10;
+
+        int offset = (page - 1) * pageSize;
+
+        List<Product> products = productDAO.findPaginated(offset, pageSize);
+        long totalItems = productDAO.count();
+
+        int totalPages = (int) Math.ceil((double) totalItems / pageSize);
+        if (totalPages == 0 && totalItems > 0) { // Caso borde para pocos items
+            totalPages = 1;
+        }
+
+        return new PaginatedResponseDTO<>(products, page, pageSize, totalItems, totalPages);
     }
 
     public Product findProductById(int id) {
@@ -38,24 +53,19 @@ public class ProductService {
     }
 
     public Product updateProduct(int id, ProductUpdateDTO dto) {
-        // Primero, buscamos si el producto existe. Esto también valida el ID.
         Product existingProduct = findProductById(id);
 
-        // Actualizamos los campos del objeto existente
         existingProduct.setName(dto.name());
         existingProduct.setDescription(dto.description());
         existingProduct.setPrice(dto.price());
         existingProduct.setStock(dto.stock());
 
-        // Guardamos los cambios en la base de datos
         return productDAO.update(existingProduct)
             .orElseThrow(() -> new RuntimeException("No se pudo actualizar el producto con ID: " + id));
     }
 
     public void deleteProduct(int id) {
-        // Verificamos que el producto existe antes de intentar borrarlo.
-        // Si no existe, findProductById lanzará una excepción.
-        findProductById(id); 
+        findProductById(id);
         
         if (!productDAO.deleteById(id)) {
             throw new RuntimeException("No se pudo eliminar el producto con ID: " + id);
