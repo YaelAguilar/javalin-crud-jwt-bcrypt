@@ -11,20 +11,24 @@ repositories {
 }
 
 dependencies {
-    // javalin-bundle incluye el núcleo de Javalin, Logback, y plugins comunes como el de CORS
+    // --- Framework Web ---
     implementation("io.javalin:javalin-bundle:5.6.1")
 
+    // --- Manejo de JSON ---
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2")
-    
+
+    // --- Base de Datos ---
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("mysql:mysql-connector-java:8.0.33")
 
+    // --- Seguridad ---
     implementation("at.favre.lib:bcrypt:0.10.2")
-    implementation("io.jsonwebtoken:jjwt-api:0.11.5")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+    
+    // JWT (JSON Web Tokens)
+    implementation("com.auth0:java-jwt:4.4.0")
 
+    // --- Utilidades ---
     implementation("io.github.cdimascio:dotenv-java:3.0.0")
 }
 
